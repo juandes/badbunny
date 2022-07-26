@@ -1,0 +1,49 @@
+---
+title: "When do I listen to Bad Bunny?"
+output: html_notebook
+---
+
+```{r}
+require(parsedate)
+require(lubridate)
+require(skimr)
+```
+
+```{r}
+df <- read.csv("~/Development/badbunny/data/df.csv")
+```
+
+
+```{r}
+df$posixct <- as.POSIXct(df$PlayedAt, tz = "UTC", format = "%Y-%m-%dT%H:%M:%OS")
+
+# Assign timezones
+# This is for reference only
+df$tz[df$posixct < "2019-07-04"] <- "Europe/Berlin"
+df$tz[df$posixct >= "2019-07-04" & df$posixct <= "2019-12-16"] <- "Asia/Singapore"
+df$tz[df$posixct >= "2019-12-17" & df$posixct <= "2020-07-16"] <- "Pacific/Auckland"
+df$tz[df$posixct > "2020-07-16" & df$posixct <= "2022-04-04"] <- "Europe/Berlin"
+df$tz[df$posixct > "2022-04-04"] <- "America/Chicago"
+
+# Yes, this is a weird weird to do it but see this: 
+# https://stackoverflow.com/questions/41648912/invalid-tz-value-problems-with-time-zone#:~:text=The%20source%20of%20your%20%22invalid,value%2C%20then%20it%20will%20work.
+df$posixctd[df$posixct < "2019-07-04"] <- as.character(with_tz(df$posixct[df$posixct < "2019-07-04"], 
+                                                 "Europe/Berlin"))
+df$posixctd[df$posixct >= "2019-07-04" & df$posixct <= "2019-12-16"] <- as.character(with_tz(df$posixct[df$posixct >= "2019-07-04" & df$posixct <= "2019-12-16"],
+                                                                               "Asia/Singapore"))
+df$posixctd[df$posixct >= "2019-12-17" & df$posixct <= "2020-07-16"] <- as.character(with_tz(df$posixct[df$posixct >= "2019-12-17" & df$posixct <= "2020-07-16"],
+                                                                               "Pacific/Auckland"))
+df$posixctd[df$posixct > "2020-07-16" & df$posixct <= "2022-04-04"] <- as.character(with_tz(df$posixct[df$posixct > "2020-07-16" & df$posixct <= "2022-04-04"],
+                                                                              "Europe/Berlin"))
+df$posixctd[df$posixct > "2022-04-04"] <- as.character(with_tz(df$posixct[df$posixct > "2022-04-04"], 
+                                                 "America/Chicago"))
+```
+
+
+```{r}
+# This localtime considers the timezone
+df$localtime <- apply(df, 1, getLocalTime)
+```
+
+
+
