@@ -7,6 +7,8 @@ output: html_notebook
 require(parsedate)
 require(lubridate)
 require(skimr)
+require(dplyr)
+require(tidyr)
 ```
 
 ```{r}
@@ -39,11 +41,96 @@ df$posixctd[df$posixct > "2022-04-04"] <- as.character(with_tz(df$posixct[df$pos
                                                  "America/Chicago"))
 ```
 
-
 ```{r}
-# This localtime considers the timezone
-df$localtime <- apply(df, 1, getLocalTime)
+# How many songs (as of July 26, 2022)
+nrow(df)
+# I have a total of 67641 songs, so 6.6% percent are from BB.
 ```
 
 
+```{r}
+# Favorite song
+grouped.by.song <- df %>%
+  select(Name) %>%
+  group_by(Name) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100) %>%
+  arrange(desc(n))
+```
+
+```{r}
+print(grouped.by.song)
+```
+```{r}
+# Longest sequence per day
+df$date <- date(df$posixctd)
+
+songs.by.day <- df %>%
+  group_by(date) %>%
+  summarise(n = n()) %>%
+  complete(date = seq.Date(min(date), max(date), by='day'))
+
+songs.by.day[is.na(songs.by.day)] <- 0
+# if listened at least once
+songs.by.day$listened <- ifelse(songs.by.day$n > 0, TRUE, FALSE)
+```
+
+```{r}
+sequences <- rle(songs.by.day$n)
+r[["lengths"]]
+```
+
+```{r}
+r[["values"]]
+```
+```{r}
+# Longest streak without BB lasted 91 days started on 2018-03-19 and ended on 2018-06-18
+```
+
+```{r}
+sequences.bool <- rle(songs.by.day$listened)
+```
+
+```{r}
+sequences.bool[["lengths"]]
+sequences.bool[["values"]]
+
+sequences.df <- data.frame(lengths = sequences.bool[["lengths"]], values = sequences.bool[["values"]])
+
+sum(sequences.bool[["lengths"]][1:215]) #1136
+
+# Longest sequence started on 2021-01-10 and ended on 2021-01-26
+```
+
+```{r}
+# Statistics about streaks of days when I don't listen to BB
+skim(sequences.df[sequences.df$values == FALSE,])
+```
+```{r}
+# Statistics about streaks of days when I listen to BB
+skim(sequences.df[sequences.df$values == TRUE,])
+```
+
+```{r}
+# Day where I listened to him the most
+songs.by.day[which.max(songs.by.day$n),] #2021-02-16. Cami was in DD and we listened to "This is Bad Bunny." 
+```
+
+```{r}
+# What songs did I listen on the day I listened to him the most?
+df[df$date == "2021-02-16",] %>%
+  group_by(Name) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+```
+
+
+```{r}
+# Stats of days where I listened to him
+skim(songs.by.day[songs.by.day$listened == TRUE,])
+```
+## Weekdays and hours
+
+```{r}
+
+```
 
