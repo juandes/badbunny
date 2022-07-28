@@ -9,6 +9,8 @@ require(lubridate)
 require(skimr)
 require(dplyr)
 require(tidyr)
+require(ggplot2)
+require(bbplot)
 ```
 
 ```{r}
@@ -131,6 +133,56 @@ skim(songs.by.day[songs.by.day$listened == TRUE,])
 ## Weekdays and hours
 
 ```{r}
+df$weekdays <- weekdays(as.POSIXct(df$posixctd))
+df$hour <- hour(as.POSIXct(df$posixctd))
+```
 
+```{r}
+songs.by.weekday <- df %>%
+  select(weekdays) %>%
+  group_by(weekdays) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100) %>%
+  arrange(desc(n))
+print(songs.by.weekday)
+
+# Why not Friday, because Fridays are for Release Radar
+```
+
+```{r}
+songs.by.hour <- df %>%
+  select(hour) %>%
+  group_by(hour) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100) %>%
+  arrange(desc(n))
+print(songs.by.hour)
+```
+```{r}
+songs.by.weekday.hour <- df %>%
+  select(weekdays, hour) %>%
+  group_by(weekdays, hour) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100, .groups="drop_last") %>%
+  arrange(desc(n))
+print(songs.by.weekday.hour)
+```
+```{r}
+songs.by.weekday.hour$weekdays <- factor(songs.by.weekday.hour$weekdays, levels = c("Monday", "Tuesday", "Wednesday", "Thursday",  "Friday", 
+                                                 "Saturday", "Sunday"))
+```
+
+```{r}
+p <- ggplot(songs.by.weekday.hour, aes(x = hour, y = weekdays)) +
+  geom_point(aes(size = n)) +
+  labs(title="Weekdays and times (hour) when I've played Bad Bunny's songs") +
+  xlab('Hour') + ylab('Weekday') +
+  bbc_style() +
+  theme(axis.title = element_text(size = 24), 
+        plot.margin = unit(c(1.0,1.5,1.0,1.0), 'cm'),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+        legend.position = 'none')
+print(p)
+```
+```{r}
+weekday.hours.toexport <- data.frame(hour = df$hour, weekday= df$weekdays)
+write.table(weekday.hours.toexport, file = "data/weekdays_hours.csv", row.names = FALSE, quote = FALSE, sep = ",")
 ```
 
