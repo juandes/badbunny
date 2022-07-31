@@ -15,6 +15,7 @@ require(bbplot)
 
 ```{r}
 df <- read.csv("~/Development/badbunny/data/df.csv")
+setwd("~/Development/badbunny")
 ```
 
 
@@ -62,6 +63,22 @@ grouped.by.song <- df %>%
 ```{r}
 print(grouped.by.song)
 ```
+
+```{r}
+album.df <- df[df$Album == 'YHLQMDLG' | df$Album == 'EL ÚLTIMO TOUR DEL MUNDO' |
+           df$Album == 'X 100PRE' | df$Album == 'Un Verano Sin Ti' | df$Album == 'LAS QUE NO IBAN A SALIR',]
+# Favorite album
+grouped.by.album <- album.df %>%
+  select(Album) %>%
+  group_by(Album) %>%
+  summarise(n = n(), percentage = (n() / nrow(album.df)) * 100) %>%
+  arrange(desc(n))
+```
+
+```{r}
+print(grouped.by.album)
+```
+
 ```{r}
 # Longest sequence per day
 df$date <- date(df$posixctd)
@@ -77,12 +94,16 @@ songs.by.day$listened <- ifelse(songs.by.day$n > 0, TRUE, FALSE)
 ```
 
 ```{r}
-sequences <- rle(songs.by.day$n)
-r[["lengths"]]
+skim(songs.by.day)
 ```
 
 ```{r}
-r[["values"]]
+sequences <- rle(songs.by.day$n)
+sequences[["lengths"]]
+```
+
+```{r}
+sequences[["values"]]
 ```
 ```{r}
 # Longest streak without BB lasted 91 days started on 2018-03-19 and ended on 2018-06-18
@@ -105,17 +126,65 @@ sum(sequences.bool[["lengths"]][1:215]) #1136
 
 ```{r}
 # Statistics about streaks of days when I don't listen to BB
-skim(sequences.df[sequences.df$values == FALSE,])
+false.sequences <- sequences.df[sequences.df$values == FALSE,]
+skim(false.sequences)
 ```
 ```{r}
+p <- ggplot(false.sequences, aes(x=lengths)) +
+  geom_histogram(bins = 30) +
+  geom_vline(xintercept=mean(false.sequences$lengths), linetype="dashed", 
+              size=1) +
+  annotate("text", x = mean(false.sequences$lengths) + 10, y = 50, 
+           label = sprintf("Mean: %.2f", mean(false.sequences$lengths)), size = 10) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Consecutive days when I didn't listen to Bad Bunny",
+       subtitle = "") +
+  xlab("Consecutive days") +
+  ylab("Count")
+print(p)
+```
+```{r}
+ggsave('plots/hist_didnt_listened.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+
+```{r}
 # Statistics about streaks of days when I listen to BB
-skim(sequences.df[sequences.df$values == TRUE,])
+true.sequences <- sequences.df[sequences.df$values == TRUE,]
+skim(true.sequences)
+```
+```{r}
+p <- ggplot(true.sequences, aes(x=lengths)) +
+  geom_histogram(bins = 20) +
+  geom_vline(xintercept=mean(true.sequences$lengths), linetype="dashed", 
+              size=1) +
+  annotate("text", x = mean(true.sequences$lengths) + 1.5, y = 60, 
+           label = sprintf("Mean: %.2f", mean(true.sequences$lengths)), size = 10) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Consecutive days when I did listen to Bad Bunny",
+       subtitle = "") +
+  xlab("Consecutive days") +
+  ylab("Count")
+print(p)
+```
+
+```{r}
+ggsave('plots/hist_did_listened.png', plot = p, 
+       width = 15, height = 8, units = 'in')
 ```
 
 ```{r}
 # Day where I listened to him the most
 songs.by.day[which.max(songs.by.day$n),] #2021-02-16. Cami was in DD and we listened to "This is Bad Bunny." 
 ```
+
 
 ```{r}
 # What songs did I listen on the day I listened to him the most?
@@ -130,6 +199,29 @@ df[df$date == "2021-02-16",] %>%
 # Stats of days where I listened to him
 skim(songs.by.day[songs.by.day$listened == TRUE,])
 ```
+
+```{r}
+p <- ggplot(songs.by.day[songs.by.day$listened == TRUE,], aes(x=n)) +
+  geom_histogram(bins = 20) +
+  geom_vline(xintercept=mean(songs.by.day[songs.by.day$listened == TRUE,]$n), linetype="dashed", 
+              size=1) +
+  annotate("text", x = mean(songs.by.day[songs.by.day$listened == TRUE,]$n) + 10, y = 130, 
+           label = sprintf("Mean: %.2f", mean(songs.by.day[songs.by.day$listened == TRUE,]$n)), size = 10) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Songs listened during days where I played Bad Bunny",
+       subtitle = "") +
+  xlab("Consecutive days") +
+  ylab("Count")
+print(p)
+```
+```{r}
+ggsave('plots/hist_songs_listened.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
 ## Weekdays and hours
 
 ```{r}
@@ -156,6 +248,8 @@ songs.by.hour <- df %>%
   arrange(desc(n))
 print(songs.by.hour)
 ```
+
+
 ```{r}
 songs.by.weekday.hour <- df %>%
   select(weekdays, hour) %>%
@@ -185,4 +279,47 @@ print(p)
 weekday.hours.toexport <- data.frame(hour = df$hour, weekday= df$weekdays)
 write.table(weekday.hours.toexport, file = "data/weekdays_hours.csv", row.names = FALSE, quote = FALSE, sep = ",")
 ```
+
+```{r}
+# Export data for Prophet
+to.export.prophet <- df %>%
+  select(posixctd) %>%
+  group_by(posixctd) %>%
+  summarise(n = n()) %>%
+  arrange(posixctd)
+
+colnames(to.export.prophet) <- c("ds", "y")
+write.table(to.export.prophet, file = "data/timeseries.csv", row.names = FALSE, quote = FALSE, sep = ",")
+```
+
+```{r}
+# Export data for Prophet
+to.export.prophet_date <- songs.by.day %>%
+  select(date, n)
+
+colnames(to.export.prophet_date) <- c("ds", "y")
+write.table(to.export.prophet_date, file = "data/timeseries_date.csv", row.names = FALSE, quote = FALSE, sep = ",")
+
+```
+
+```{r}
+# Percentage of days I've listened to compared with all days 
+songs.by.day$weekday <- weekdays(songs.by.day$date)
+
+songs.by.day %>%
+  select(weekday, listened) %>%
+  group_by(weekday) %>%
+  summarize(sum = sum(listened), percentage = (sum(listened) / n()) * 100) %>%
+  arrange(desc(percentage))
+```
+```{r}
+# Remove that long period of time
+songs.by.day %>%
+  filter(date > "2018-03-19") %>%
+  select(weekday, listened) %>%
+  group_by(weekday) %>%
+  summarize(sum = sum(listened), percentage = (sum(listened) / n()) * 100) %>%
+  arrange(desc(percentage))
+```
+
 

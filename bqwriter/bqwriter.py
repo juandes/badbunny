@@ -13,14 +13,6 @@ time_delay = 7200.0
 
 class BQWriter:
 
-    client = None
-    project = None
-    dataset_name = None
-    table_name = None
-    table_id = None
-
-    dataset = None
-    table = None
     table_schema = (
         bigquery.SchemaField('Name', 'STRING'),
         bigquery.SchemaField('Duration', 'INTEGER'),
@@ -34,8 +26,6 @@ class BQWriter:
         bigquery.SchemaField('AlbumId', 'STRING'),
         bigquery.SchemaField('PlayedAt', 'STRING'),
     )
-
-    spotify_username = None
 
     def __init__(self, project, dataset_name, table_name,
                  spotify_username) -> None:
@@ -63,7 +53,7 @@ class BQWriter:
             table = bigquery.Table(self.table_id, schema=self.table_schema)
             table = self.client.create_table(table)
 
-    def get_latest_played_songs(self):
+    def get_latest_played_songs(self) -> None:
         start_time = time.time()
         # keep track of the last time an API called was performed.
         # Initialize it with current time
