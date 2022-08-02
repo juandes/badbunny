@@ -18,6 +18,27 @@ df <- read.csv("~/Development/badbunny/data/df.csv")
 setwd("~/Development/badbunny")
 ```
 
+```{r}
+modified_bbplot <- function () 
+{
+  font <- "Helvetica"
+  ggplot2::theme(plot.title = ggplot2::element_text(family = font, 
+    size = 28, face = "bold", color = "#222222"), plot.subtitle = ggplot2::element_text(family = font, 
+    size = 22, margin = ggplot2::margin(9, 0, 9, 0)), plot.caption = ggplot2::element_blank(), 
+    axis.title = ggplot2::element_blank(), 
+    axis.text = ggplot2::element_text(family = font, size = 18, 
+      color = "#222222"), axis.text.x = ggplot2::element_text(margin = ggplot2::margin(5, 
+      b = 10)), axis.ticks = ggplot2::element_blank(), 
+    axis.line = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank(), 
+    panel.grid.major.y = ggplot2::element_line(color = "#cbcbcb"), 
+    panel.grid.major.x = ggplot2::element_blank(), panel.background = ggplot2::element_blank(), 
+    strip.background = ggplot2::element_rect(fill = "white"), 
+    strip.text = ggplot2::element_text(size = 22, hjust = 0))
+}
+
+```
+
+
 
 ```{r}
 df$posixct <- as.POSIXct(df$PlayedAt, tz = "UTC", format = "%Y-%m-%dT%H:%M:%OS")
@@ -248,6 +269,25 @@ songs.by.hour <- df %>%
   arrange(desc(n))
 print(songs.by.hour)
 ```
+```{r}
+p <- ggplot(songs.by.hour, aes(x=reorder(hour, -n), y=n)) +
+  geom_bar(stat = 'identity') +
+  scale_fill_brewer(palette='Set2') +
+  labs(title="Bad Bunny songs played by hour",
+       subtitle = "From a total 4477 songs played") +
+  xlab('Hour') + ylab('Count') +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0,1.5,1.0,1.0), 'cm'),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+        axis.text.x = element_text(angle = 0, hjust = 1),
+        legend.position = 'none')
+print(p)
+```
+```{r}
+ggsave('plots/songs_played_hour.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
 
 
 ```{r}
@@ -258,6 +298,7 @@ songs.by.weekday.hour <- df %>%
   arrange(desc(n))
 print(songs.by.weekday.hour)
 ```
+
 ```{r}
 songs.by.weekday.hour$weekdays <- factor(songs.by.weekday.hour$weekdays, levels = c("Monday", "Tuesday", "Wednesday", "Thursday",  "Friday", 
                                                  "Saturday", "Sunday"))
@@ -265,15 +306,19 @@ songs.by.weekday.hour$weekdays <- factor(songs.by.weekday.hour$weekdays, levels 
 
 ```{r}
 p <- ggplot(songs.by.weekday.hour, aes(x = hour, y = weekdays)) +
-  geom_point(aes(size = n)) +
-  labs(title="Weekdays and times (hour) when I've played Bad Bunny's songs") +
+  geom_point(aes(size = percentage ^ 2, color = n, stroke = n * 0.1)) +
+  scale_colour_gradient(low = "#F0E442", high = "#CC79A7") + 
+  labs(title="When do I listen to Bad Bunny?") +
   xlab('Hour') + ylab('Weekday') +
-  bbc_style() +
+  modified_bbplot() +
   theme(axis.title = element_text(size = 24), 
         plot.margin = unit(c(1.0,1.5,1.0,1.0), 'cm'),
-        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-        legend.position = 'none')
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0))) +
+  labs(color='# Songs\nplayed') +
+  scale_size(guide = 'none')  # Supress the legend from aes "size."
 print(p)
+ggsave('plots/weekdays_hours.png', plot = p, 
+       width = 15, height = 8, units = 'in')
 ```
 ```{r}
 weekday.hours.toexport <- data.frame(hour = df$hour, weekday= df$weekdays)
@@ -322,4 +367,15 @@ songs.by.day %>%
   arrange(desc(percentage))
 ```
 
+```{r}
+# Read the results from scikit-learn
+results <- read.csv("~/Development/badbunny/data/results.csv")
+results.with.times <- cbind(weekday.hours.toexport, results)
+```
+
+```{r}
+results.with.times %>%
+  group_by(weekday, hour) %>%
+  summarize(median = median(predictions))
+```
 
