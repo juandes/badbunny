@@ -38,20 +38,24 @@ class BQWriter:
         self.client = bigquery.Client(self.project)
 
         try:
-            dataset = self.client.get_dataset(self.dataset_name)
+            self.client.get_dataset(self.dataset_name)
         except NotFound:
             print("Dataset {} is not found. Creating it.".format(
                 self.dataset_name))
             dataset = bigquery.Dataset(self.dataset_name)
             dataset.location = "US"
-            dataset = self.client.create_dataset(dataset)
+            self.client.create_dataset(dataset)
 
         try:
-            table = self.client.get_table(self.table_id)
+            self.client.get_table(self.table_id)
         except NotFound:
             print("Table {} is not found. Creating one".format(table_name))
             table = bigquery.Table(self.table_id, schema=self.table_schema)
-            table = self.client.create_table(table)
+            self.client.create_table(table)
+            # It takes some time after creating the table
+            # before you can use it:
+            # https://github.com/googleapis/google-cloud-go/issues/975
+            time.sleep(30)
 
     def get_latest_played_songs(self) -> None:
         start_time = time.time()
@@ -66,7 +70,7 @@ class BQWriter:
             rows = []
             print('Executing at {}'.format(
                 time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
-            songs = sp.current_user_recently_played(after=last_insert_time)
+            songs = sp.current_user_recently_played(after=1659219047000)
             for song in songs['items']:
                 rows.append(
                     (song['track']['name'], song['track']['duration_ms'],
