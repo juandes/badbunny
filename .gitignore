@@ -2,3 +2,4 @@ notes
 .RData
 .RHistory
 *.html
+.ipynb_checkpoints/

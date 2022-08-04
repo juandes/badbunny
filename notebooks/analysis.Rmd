@@ -357,6 +357,7 @@ songs.by.day %>%
   summarize(sum = sum(listened), percentage = (sum(listened) / n()) * 100) %>%
   arrange(desc(percentage))
 ```
+
 ```{r}
 # Remove that long period of time
 songs.by.day %>%
@@ -374,8 +375,51 @@ results.with.times <- cbind(weekday.hours.toexport, results)
 ```
 
 ```{r}
-results.with.times %>%
+p <- ggplot(results, aes(x=scores)) +
+  geom_histogram(bins = 30) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Histogram of the anomaly scores output by the model",
+       subtitle = "One score per listen session") +
+  xlab("Anomaly score") +
+  ylab("Count")
+print(p)
+ggsave('plots/hist_scores.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+```{r}
+summarized.results.with.times <- results.with.times %>%
   group_by(weekday, hour) %>%
   summarize(median = median(predictions))
+```
+
+
+```{r}
+summarized.results.with.times$weekday <- factor(summarized.results.with.times$weekday, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", 
+                                                                                                  "Friday", "Saturday", "Sunday"))
+
+summarized.results.with.times$median.bool <- ifelse(summarized.results.with.times$median == 1, FALSE, TRUE)
+```
+
+
+```{r}
+p <- ggplot(summarized.results.with.times, aes(x = hour, y = weekday)) +
+  geom_point(aes(color = median.bool, size = 10)) +
+  scale_colour_manual(values=c("#CC79A7", "#F0E442")) +
+  #scale_colour_gradient(low = "#F0E442", high = "#CC79A7") + 
+  labs(title="Anomalous times") +
+  xlab('Hour') + ylab('Weekday') +
+  modified_bbplot() +
+  theme(axis.title = element_text(size = 24), 
+        plot.margin = unit(c(1.0,1.5,1.0,1.0), 'cm'),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0))) +
+  labs(color='Is anomaly?') +
+  scale_size(guide = 'none')  # Supress the legend from aes "size."
+print(p)
+ggsave('plots/anomalous_times.png', plot = p, 
+       width = 15, height = 8, units = 'in')
 ```
 
