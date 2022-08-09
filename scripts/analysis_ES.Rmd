@@ -1,0 +1,462 @@
+---
+title: "When do I listen to Bad Bunny?"
+output: html_notebook
+---
+
+```{r}
+require(parsedate)
+require(lubridate)
+require(skimr)
+require(dplyr)
+require(tidyr)
+require(ggplot2)
+require(bbplot)
+```
+
+```{r}
+df <- read.csv("~/Development/badbunny/data/df.csv")
+setwd("~/Development/badbunny")
+```
+
+```{r}
+modified_bbplot <- function () 
+{
+  font <- "Helvetica"
+  ggplot2::theme(plot.title = ggplot2::element_text(family = font, 
+    size = 28, face = "bold", color = "#222222"), plot.subtitle = ggplot2::element_text(family = font, 
+    size = 22, margin = ggplot2::margin(9, 0, 9, 0)), plot.caption = ggplot2::element_blank(), 
+    axis.title = ggplot2::element_blank(), 
+    axis.text = ggplot2::element_text(family = font, size = 18, 
+      color = "#222222"), axis.text.x = ggplot2::element_text(margin = ggplot2::margin(5, 
+      b = 10)), axis.ticks = ggplot2::element_blank(), 
+    axis.line = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank(), 
+    panel.grid.major.y = ggplot2::element_line(color = "#cbcbcb"), 
+    panel.grid.major.x = ggplot2::element_blank(), panel.background = ggplot2::element_blank(), 
+    strip.background = ggplot2::element_rect(fill = "white"), 
+    strip.text = ggplot2::element_text(size = 22, hjust = 0))
+}
+
+```
+
+
+
+```{r}
+df$posixct <- as.POSIXct(df$PlayedAt, tz = "UTC", format = "%Y-%m-%dT%H:%M:%OS")
+
+# Assign timezones
+# This is for reference only
+df$tz[df$posixct < "2019-07-04"] <- "Europe/Berlin"
+df$tz[df$posixct >= "2019-07-04" & df$posixct <= "2019-12-16"] <- "Asia/Singapore"
+df$tz[df$posixct >= "2019-12-17" & df$posixct <= "2020-07-16"] <- "Pacific/Auckland"
+df$tz[df$posixct > "2020-07-16" & df$posixct <= "2022-04-04"] <- "Europe/Berlin"
+df$tz[df$posixct > "2022-04-04"] <- "America/Chicago"
+
+# Yes, this is a weird weird to do it but see this: 
+# https://stackoverflow.com/questions/41648912/invalid-tz-value-problems-with-time-zone#:~:text=The%20source%20of%20your%20%22invalid,value%2C%20then%20it%20will%20work.
+df$posixctd[df$posixct < "2019-07-04"] <- as.character(with_tz(df$posixct[df$posixct < "2019-07-04"], 
+                                                 "Europe/Berlin"))
+df$posixctd[df$posixct >= "2019-07-04" & df$posixct <= "2019-12-16"] <- as.character(with_tz(df$posixct[df$posixct >= "2019-07-04" & df$posixct <= "2019-12-16"],
+                                                                               "Asia/Singapore"))
+df$posixctd[df$posixct >= "2019-12-17" & df$posixct <= "2020-07-16"] <- as.character(with_tz(df$posixct[df$posixct >= "2019-12-17" & df$posixct <= "2020-07-16"],
+                                                                               "Pacific/Auckland"))
+df$posixctd[df$posixct > "2020-07-16" & df$posixct <= "2022-04-04"] <- as.character(with_tz(df$posixct[df$posixct > "2020-07-16" & df$posixct <= "2022-04-04"],
+                                                                              "Europe/Berlin"))
+df$posixctd[df$posixct > "2022-04-04"] <- as.character(with_tz(df$posixct[df$posixct > "2022-04-04"], 
+                                                 "America/Chicago"))
+```
+
+```{r}
+# How many songs (as of July 26, 2022)
+nrow(df)
+# I have a total of 67641 songs, so 6.6% percent are from BB.
+```
+
+
+```{r}
+# Favorite song
+grouped.by.song <- df %>%
+  select(Name) %>%
+  group_by(Name) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100) %>%
+  arrange(desc(n))
+```
+
+```{r}
+print(grouped.by.song)
+```
+
+```{r}
+album.df <- df[df$Album == 'YHLQMDLG' | df$Album == 'EL ÚLTIMO TOUR DEL MUNDO' |
+           df$Album == 'X 100PRE' | df$Album == 'Un Verano Sin Ti' | df$Album == 'LAS QUE NO IBAN A SALIR',]
+# Favorite album
+grouped.by.album <- album.df %>%
+  select(Album) %>%
+  group_by(Album) %>%
+  summarise(n = n(), percentage = (n() / nrow(album.df)) * 100) %>%
+  arrange(desc(n))
+```
+
+```{r}
+print(grouped.by.album)
+```
+
+```{r}
+# Longest sequence per day
+df$date <- date(df$posixctd)
+
+songs.by.day <- df %>%
+  group_by(date) %>%
+  summarise(n = n()) %>%
+  complete(date = seq.Date(min(date), max(date), by='day'))
+
+songs.by.day[is.na(songs.by.day)] <- 0
+# if listened at least once
+songs.by.day$listened <- ifelse(songs.by.day$n > 0, TRUE, FALSE)
+```
+
+```{r}
+skim(songs.by.day)
+```
+
+```{r}
+sequences <- rle(songs.by.day$n)
+sequences[["lengths"]]
+```
+
+```{r}
+sequences[["values"]]
+```
+```{r}
+# Longest streak without BB lasted 91 days started on 2018-03-19 and ended on 2018-06-18
+```
+
+```{r}
+sequences.bool <- rle(songs.by.day$listened)
+```
+
+```{r}
+sequences.bool[["lengths"]]
+sequences.bool[["values"]]
+
+sequences.df <- data.frame(lengths = sequences.bool[["lengths"]], values = sequences.bool[["values"]])
+
+sum(sequences.bool[["lengths"]][1:215]) #1136
+
+# Longest sequence started on 2021-01-10 and ended on 2021-01-26
+```
+
+```{r}
+# Statistics about streaks of days when I don't listen to BB
+false.sequences <- sequences.df[sequences.df$values == FALSE,]
+skim(false.sequences)
+```
+
+```{r}
+p <- ggplot(false.sequences, aes(x=lengths)) +
+  geom_histogram(bins = 30) +
+  geom_vline(xintercept=mean(false.sequences$lengths), linetype="dashed", 
+              size=1) +
+  annotate("text", x = mean(false.sequences$lengths) + 10, y = 50, 
+           label = sprintf("Promedio: %.2f", mean(false.sequences$lengths)), size = 10) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Días consecutivos en que no escuché a Bad Bunny",
+       subtitle = "") +
+  xlab("Días consecutivos") +
+  ylab("Total")
+print(p)
+```
+
+```{r}
+ggsave('../plots/hist_didnt_listened_ES.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+
+```{r}
+# Statistics about streaks of days when I listen to BB
+true.sequences <- sequences.df[sequences.df$values == TRUE,]
+skim(true.sequences)
+```
+
+```{r}
+p <- ggplot(true.sequences, aes(x=lengths)) +
+  geom_histogram(bins = 20) +
+  geom_vline(xintercept=mean(true.sequences$lengths), linetype="dashed", 
+              size=1) +
+  annotate("text", x = mean(true.sequences$lengths) + 2.5, y = 60, 
+           label = sprintf("Promedio: %.2f", mean(true.sequences$lengths)), size = 10) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Días consecutivos en que escuché a Bad Bunny",
+       subtitle = "") +
+  xlab("Días consecutivos") +
+  ylab("Total")
+print(p)
+```
+
+```{r}
+ggsave('../plots/hist_did_listened_ES.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+```{r}
+# Day where I listened to him the most
+songs.by.day[which.max(songs.by.day$n),] #2021-02-16. Cami was in DD and we listened to "This is Bad Bunny." 
+```
+
+
+```{r}
+# What songs did I listen on the day I listened to him the most?
+df[df$date == "2021-02-16",] %>%
+  group_by(Name) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+```
+
+
+```{r}
+# Stats of days where I listened to him
+skim(songs.by.day[songs.by.day$listened == TRUE,])
+```
+
+```{r}
+p <- ggplot(songs.by.day[songs.by.day$listened == TRUE,], aes(x=n)) +
+  geom_histogram(bins = 20) +
+  geom_vline(xintercept=mean(songs.by.day[songs.by.day$listened == TRUE,]$n), linetype="dashed", 
+              size=1) +
+  annotate("text", x = mean(songs.by.day[songs.by.day$listened == TRUE,]$n) + 15, y = 130, 
+           label = sprintf("Promedio: %.2f", mean(songs.by.day[songs.by.day$listened == TRUE,]$n)), size = 10) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.title = element_text(size = 18), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Número de canciones que reproducidas en los días en que escuché a Bad Bunny",
+       subtitle = "") +
+  xlab("Canciones reproducidas") +
+  ylab("Total")
+print(p)
+```
+
+```{r}
+ggsave('../plots/hist_songs_listened_ES.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+## Weekdays and hours
+
+```{r}
+df$weekdays <- weekdays(as.POSIXct(df$posixctd))
+df$hour <- hour(as.POSIXct(df$posixctd))
+```
+
+```{r}
+songs.by.weekday <- df %>%
+  select(weekdays) %>%
+  group_by(weekdays) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100) %>%
+  arrange(desc(n))
+print(songs.by.weekday)
+
+# Why not Friday, because Fridays are for Release Radar
+```
+
+```{r}
+songs.by.hour <- df %>%
+  select(hour) %>%
+  group_by(hour) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100) %>%
+  arrange(desc(n))
+print(songs.by.hour)
+```
+
+```{r}
+p <- ggplot(songs.by.hour, aes(x=reorder(hour, -n), y=n)) +
+  geom_bar(stat = 'identity') +
+  scale_fill_brewer(palette='Set2') +
+  labs(title="Canciones de Bad Bunny reproducidas por hora",
+       subtitle = "De un total de 4477 canciones") +
+  xlab('Hora') + ylab('Total') +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0,1.5,1.0,1.0), 'cm'),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+        axis.text.x = element_text(angle = 0, hjust = 1),
+        legend.position = 'none')
+print(p)
+```
+
+```{r}
+ggsave('../plots/songs_played_hour_ES.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+
+```{r}
+songs.by.weekday.hour <- df %>%
+  select(weekdays, hour) %>%
+  group_by(weekdays, hour) %>%
+  summarise(n = n(), percentage = (n() / nrow(df)) * 100, .groups="drop_last") %>%
+  arrange(desc(n))
+print(songs.by.weekday.hour)
+```
+
+```{r}
+songs.by.weekday.hour.es <- songs.by.weekday.hour
+songs.by.weekday.hour.es$weekdays <- factor(songs.by.weekday.hour.es$weekdays, levels = c("Monday", "Tuesday", "Wednesday", "Thursday",  "Friday", 
+                                                 "Saturday", "Sunday"))
+
+songs.by.weekday.hour.es$weekdays_en <- songs.by.weekday.hour.es$weekdays
+songs.by.weekday.hour.es$weekdays_es <- songs.by.weekday.hour.es$weekdays
+levels(songs.by.weekday.hour.es$weekdays_es)[1] <- "Lunes"
+levels(songs.by.weekday.hour.es$weekdays_es)[2] <- "Martes"
+levels(songs.by.weekday.hour.es$weekdays_es)[3] <- "Miercoles"
+levels(songs.by.weekday.hour.es$weekdays_es)[4] <- "Jueves"
+levels(songs.by.weekday.hour.es$weekdays_es)[5] <- "Viernes"
+levels(songs.by.weekday.hour.es$weekdays_es)[6] <- "Sábado"
+levels(songs.by.weekday.hour.es$weekdays_es)[7] <- "Domingo"
+
+```
+
+```{r}
+p <- ggplot(songs.by.weekday.hour.es, aes(x = hour, y = weekdays_es)) +
+  geom_point(aes(size = percentage ^ 2, color = n, stroke = n * 0.1)) +
+  scale_colour_gradient(low = "#F0E442", high = "#CC79A7") + 
+  labs(title="¿Cuándo escucho música de Bad Bunny?") +
+  xlab('Hora') + ylab('Día de la semana') +
+  modified_bbplot() +
+  theme(axis.title = element_text(size = 24), 
+        plot.margin = unit(c(1.0,1.5,1.0,1.0), 'cm'),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0))) +
+  labs(color='# Canciones\nreproducidas') +
+  scale_size(guide = 'none')  # Supress the legend from aes "size."
+print(p)
+```
+
+```{r}
+ggsave('../plots/weekdays_hours_ES.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+```{r}
+weekday.hours.toexport <- data.frame(hour = df$hour, weekday= df$weekdays)
+write.table(weekday.hours.toexport, file = "data/weekdays_hours.csv", row.names = FALSE, quote = FALSE, sep = ",")
+```
+
+```{r}
+# Export data for Prophet
+to.export.prophet <- df %>%
+  select(posixctd) %>%
+  group_by(posixctd) %>%
+  summarise(n = n()) %>%
+  arrange(posixctd)
+
+colnames(to.export.prophet) <- c("ds", "y")
+write.table(to.export.prophet, file = "data/timeseries.csv", row.names = FALSE, quote = FALSE, sep = ",")
+```
+
+```{r}
+# Export data for Prophet
+to.export.prophet_date <- songs.by.day %>%
+  select(date, n)
+
+colnames(to.export.prophet_date) <- c("ds", "y")
+write.table(to.export.prophet_date, file = "data/timeseries_date.csv", row.names = FALSE, quote = FALSE, sep = ",")
+
+```
+
+```{r}
+# Percentage of days I've listened to compared with all days 
+songs.by.day$weekday <- weekdays(songs.by.day$date)
+
+songs.by.day %>%
+  select(weekday, listened) %>%
+  group_by(weekday) %>%
+  summarize(sum = sum(listened), percentage = (sum(listened) / n()) * 100) %>%
+  arrange(desc(percentage))
+```
+
+```{r}
+# Remove that long period of time
+songs.by.day %>%
+  filter(date > "2018-03-19") %>%
+  select(weekday, listened) %>%
+  group_by(weekday) %>%
+  summarize(sum = sum(listened), percentage = (sum(listened) / n()) * 100) %>%
+  arrange(desc(percentage))
+```
+
+```{r}
+# Read the results from scikit-learn
+results <- read.csv("~/Development/badbunny/data/results.csv")
+results.with.times <- cbind(weekday.hours.toexport, results)
+```
+
+```{r}
+p <- ggplot(results, aes(x=scores)) +
+  geom_histogram(bins = 30) +
+  bbc_style() +
+  theme(axis.title = element_text(size = 20), 
+        plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
+        axis.text.x = element_text(hjust = 1)) +
+  labs(title="Histograma de las puntuaciones de anomalía producidas por el modelo",
+       subtitle = "Una puntuación por canción reproducida") +
+  xlab("Puntuaciones de anomalía") +
+  ylab("Total")
+print(p)
+```
+```{r}
+ggsave('../plots/hist_scores_ES.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+```{r}
+summarized.results.with.times <- results.with.times %>%
+  group_by(weekday, hour) %>%
+  summarize(median = median(predictions))
+```
+
+
+```{r}
+summarized.results.with.times.es <- summarized.results.with.times
+summarized.results.with.times.es$weekday <- factor(summarized.results.with.times.es$weekday, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", 
+                                                                                                  "Friday", "Saturday", "Sunday"))
+
+levels(summarized.results.with.times.es$weekday)[1] <- "Lunes"
+levels(summarized.results.with.times.es$weekday)[2] <- "Martes"
+levels(summarized.results.with.times.es$weekday)[3] <- "Miercoles"
+levels(summarized.results.with.times.es$weekday)[4] <- "Jueves"
+levels(summarized.results.with.times.es$weekday)[5] <- "Viernes"
+levels(summarized.results.with.times.es$weekday)[6] <- "Sábado"
+levels(summarized.results.with.times.es$weekday)[7] <- "Domingo"
+summarized.results.with.times.es$median.bool <- ifelse(summarized.results.with.times.es$median == 1, FALSE, TRUE)
+```
+
+
+```{r}
+p <- ggplot(summarized.results.with.times.es, aes(x = hour, y = weekday)) +
+  geom_point(aes(color = median.bool, size = 10)) +
+  scale_colour_manual(values=c("#CC79A7", "#F0E442")) +
+  #scale_colour_gradient(low = "#F0E442", high = "#CC79A7") + 
+  labs(title="Tiempos anómalos") +
+  xlab('Hora') + ylab('Día de la semana') +
+  modified_bbplot() +
+  theme(axis.title = element_text(size = 24), 
+        plot.margin = unit(c(1.0,1.5,1.0,1.0), 'cm'),
+        axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0))) +
+  labs(color='¿Es una anomalía?') +
+  scale_size(guide = 'none')  # Supress the legend from aes "size."
+print(p)
+```
+
+```{r}
+ggsave('../plots/anomalous_times_ES.png', plot = p, 
+       width = 15, height = 8, units = 'in')
+```
+
+
