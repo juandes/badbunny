@@ -232,14 +232,14 @@ p <- ggplot(songs.by.day[songs.by.day$listened == TRUE,], aes(x=n)) +
   theme(axis.title = element_text(size = 20), 
         plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
         axis.text.x = element_text(hjust = 1)) +
-  labs(title="Songs listened during days where I played Bad Bunny",
+  labs(title="Number of songs I listened to on days when I played Bad Bunny",
        subtitle = "") +
-  xlab("Consecutive days") +
+  xlab("Songs played") +
   ylab("Count")
 print(p)
 ```
 ```{r}
-ggsave('plots/hist_songs_listened.png', plot = p, 
+ggsave('../plots/hist_songs_listened.png', plot = p, 
        width = 15, height = 8, units = 'in')
 ```
 
@@ -269,12 +269,13 @@ songs.by.hour <- df %>%
   arrange(desc(n))
 print(songs.by.hour)
 ```
+
 ```{r}
 p <- ggplot(songs.by.hour, aes(x=reorder(hour, -n), y=n)) +
   geom_bar(stat = 'identity') +
   scale_fill_brewer(palette='Set2') +
   labs(title="Bad Bunny songs played by hour",
-       subtitle = "From a total 4477 songs played") +
+       subtitle = "From a total of 4477 songs played") +
   xlab('Hour') + ylab('Count') +
   bbc_style() +
   theme(axis.title = element_text(size = 20), 
@@ -284,8 +285,9 @@ p <- ggplot(songs.by.hour, aes(x=reorder(hour, -n), y=n)) +
         legend.position = 'none')
 print(p)
 ```
+
 ```{r}
-ggsave('plots/songs_played_hour.png', plot = p, 
+ggsave('../plots/songs_played_hour.png', plot = p, 
        width = 15, height = 8, units = 'in')
 ```
 
@@ -382,11 +384,11 @@ p <- ggplot(results, aes(x=scores)) +
         plot.margin = unit(c(1.0, 1.0, 1.0, 0.5), "cm"),
         axis.text.x = element_text(hjust = 1)) +
   labs(title="Histogram of the anomaly scores output by the model",
-       subtitle = "One score per listen session") +
+       subtitle = "One score per played song") +
   xlab("Anomaly score") +
   ylab("Count")
 print(p)
-ggsave('plots/hist_scores.png', plot = p, 
+ggsave('../plots/hist_scores.png', plot = p, 
        width = 15, height = 8, units = 'in')
 ```
 
