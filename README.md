@@ -30,3 +30,8 @@ The repo has the following structure:
 - [ggplot2](https://ggplot2.tidyverse.org/): to create the visualizations in R.
 - [skimr](https://cran.r-project.org/web/packages/skimr/vignettes/skimr.html): An R package that provide summary statistics.
 - [tidyr](https://tidyr.tidyverse.org/) and [dplyr](https://dplyr.tidyverse.org/): to manipulate my data.
+
+
+### Notes
+
+I presented this work (in Spanish) at PyCon Latam 2022. For details, see: https://pylatam.org/#schedule.
